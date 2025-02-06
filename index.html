@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Privacy Plug Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+    }
+    button {
+      padding: 1em 2em;
+      margin: 0.5em;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 1em;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Privacy Plug Demo</h1>
+  <p>Click a button to simulate turning the privacy plug <strong>ON</strong> or <strong>OFF</strong>.</p>
+  
+  <!-- The "Turn On" button uses the provided "on" endpoint -->
+  <button id="onButton">Turn On</button>
+  <!-- The "Turn Off" button uses the provided "off" endpoint -->
+  <button id="offButton">Turn Off</button>
+  
+  <p id="status"></p>
+
+  <script>
+    // Set your endpoints:
+    const onUrl = 'https://eo7w2t5eehpkple.m.pipedream.net';
+    const offUrl = 'https://eoivqzjmz9aithu.m.pipedream.net';
+
+    const statusEl = document.getElementById('status');
+
+    // Function to trigger a webhook endpoint with a POST request.
+    async function triggerWebhook(url, payload) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Error triggering webhook:', error);
+        throw error;
+      }
+    }
+
+    // Event listener for the "Turn On" button.
+    document.getElementById('onButton').addEventListener('click', async () => {
+      statusEl.textContent = 'Turning plug ON...';
+      try {
+        // Send a POST with a payload indicating "on"
+        const result = await triggerWebhook(onUrl, { status: 'on' });
+        statusEl.textContent = `On Response: ${result.message || JSON.stringify(result)}`;
+      } catch (err) {
+        statusEl.textContent = 'Error turning plug ON.';
+      }
+    });
+
+    // Event listener for the "Turn Off" button.
+    document.getElementById('offButton').addEventListener('click', async () => {
+      statusEl.textContent = 'Turning plug OFF...';
+      try {
+        // Send a POST with a payload indicating "off"
+        const result = await triggerWebhook(offUrl, { status: 'off' });
+        statusEl.textContent = `Off Response: ${result.message || JSON.stringify(result)}`;
+      } catch (err) {
+        statusEl.textContent = 'Error turning plug OFF.';
+      }
+    });
+  </script>
+</body>
+</html>

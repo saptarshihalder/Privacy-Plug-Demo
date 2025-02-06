@@ -1,85 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Privacy Plug Demo</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 2em;
-    }
-    button {
-      padding: 1em 2em;
-      margin: 0.5em;
-      font-size: 1em;
-      cursor: pointer;
-    }
-    #status {
-      margin-top: 1em;
-      font-weight: bold;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Plug Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2em;
+            max-width: 800px;
+            margin: 2em auto;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+        }
+        button {
+            padding: 1em 2em;
+            margin: 0.5em;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        #onButton {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #offButton {
+            background-color: #f44336;
+            color: white;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        #status {
+            margin-top: 1em;
+            padding: 1em;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+        }
+    </style>
 </head>
 <body>
-  <h1>Privacy Plug Demo</h1>
-  <p>Click a button to simulate turning the privacy plug <strong>ON</strong> or <strong>OFF</strong>.</p>
-  
-  <!-- The "Turn On" button uses the provided "on" endpoint -->
-  <button id="onButton">Turn On</button>
-  <!-- The "Turn Off" button uses the provided "off" endpoint -->
-  <button id="offButton">Turn Off</button>
-  
-  <p id="status"></p>
+    <div class="container">
+        <h1>Privacy Plug Demo</h1>
+        <p>Click a button to simulate turning the privacy plug <strong>ON</strong> or <strong>OFF</strong>.</p>
+        
+        <button id="onButton">Turn On</button>
+        <button id="offButton">Turn Off</button>
+        
+        <div id="status">Status: Ready</div>
+    </div>
 
-  <script>
-    // Set your endpoints:
-    const onUrl = 'https://eo7w2t5eehpkple.m.pipedream.net';
-    const offUrl = 'https://eoivqzjmz9aithu.m.pipedream.net';
+    <script>
+        // Set your endpoints
+        const onUrl = 'https://eo7w2t5eehpkple.m.pipedream.net';
+        const offUrl = 'https://eoivqzjmz9aithu.m.pipedream.net';
 
-    const statusEl = document.getElementById('status');
+        const statusEl = document.getElementById('status');
 
-    // Function to trigger a webhook endpoint with a POST request.
-    async function triggerWebhook(url, payload) {
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
+        // Function to trigger a webhook endpoint with a POST request
+        async function triggerWebhook(url, payload) {
+            statusEl.textContent = `Sending request...`;
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                let result;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    result = await response.text();
+                }
+
+                return result;
+            } catch (error) {
+                console.error('Error:', error);
+                throw error;
+            }
         }
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        console.error('Error triggering webhook:', error);
-        throw error;
-      }
-    }
 
-    // Event listener for the "Turn On" button.
-    document.getElementById('onButton').addEventListener('click', async () => {
-      statusEl.textContent = 'Turning plug ON...';
-      try {
-        // Send a POST with a payload indicating "on"
-        const result = await triggerWebhook(onUrl, { status: 'on' });
-        statusEl.textContent = `On Response: ${result.message || JSON.stringify(result)}`;
-      } catch (err) {
-        statusEl.textContent = 'Error turning plug ON.';
-      }
-    });
+        // Add button event listeners
+        document.getElementById('onButton').addEventListener('click', async () => {
+            try {
+                const result = await triggerWebhook(onUrl, { status: 'on' });
+                statusEl.textContent = typeof result === 'object' ? 
+                    `Success: ${JSON.stringify(result)}` : 
+                    `Success: ${result}`;
+                statusEl.style.backgroundColor = '#e8f5e9';
+            } catch (err) {
+                statusEl.textContent = `Error: ${err.message}`;
+                statusEl.style.backgroundColor = '#ffebee';
+            }
+        });
 
-    // Event listener for the "Turn Off" button.
-    document.getElementById('offButton').addEventListener('click', async () => {
-      statusEl.textContent = 'Turning plug OFF...';
-      try {
-        // Send a POST with a payload indicating "off"
-        const result = await triggerWebhook(offUrl, { status: 'off' });
-        statusEl.textContent = `Off Response: ${result.message || JSON.stringify(result)}`;
-      } catch (err) {
-        statusEl.textContent = 'Error turning plug OFF.';
-      }
-    });
-  </script>
+        document.getElementById('offButton').addEventListener('click', async () => {
+            try {
+                const result = await triggerWebhook(offUrl, { status: 'off' });
+                statusEl.textContent = typeof result === 'object' ? 
+                    `Success: ${JSON.stringify(result)}` : 
+                    `Success: ${result}`;
+                statusEl.style.backgroundColor = '#e8f5e9';
+            } catch (err) {
+                statusEl.textContent = `Error: ${err.message}`;
+                statusEl.style.backgroundColor = '#ffebee';
+            }
+        });
+    </script>
 </body>
 </html>

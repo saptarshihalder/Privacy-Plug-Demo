@@ -1,246 +1,131 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Plug Demo</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 2em;
-            max-width: 800px;
-            margin: 2em auto;
-            background-color: #f0f2f5;
-        }
-        .container {
-            text-align: center;
-            padding: 20px;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .button-container {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin: 20px 0;
-        }
-        button {
-            padding: 1em 2em;
-            font-size: 1em;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        #onButton {
-            background-color: #4CAF50;
-            color: white;
-        }
-        #offButton {
-            background-color: #f44336;
-            color: white;
-        }
-        button:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        #status {
-            margin-top: 1em;
-            padding: 1em;
-            border-radius: 5px;
-            background-color: #f5f5f5;
-        }
-        .plug-status {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 20px 0;
-        }
-        .plug-indicator {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            border: 5px solid #ccc;
-            position: relative;
-            transition: all 0.5s;
-        }
-        .plug-indicator.on {
-            border-color: #4CAF50;
-            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
-        }
-        .plug-indicator.off {
-            border-color: #f44336;
-            box-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
-        }
-        .log-container {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-            max-height: 200px;
-            overflow-y: auto;
-            text-align: left;
-        }
-        .log-entry {
-            margin: 5px 0;
-            padding: 5px;
-            border-left: 3px solid #ccc;
-        }
-        .log-entry.success {
-            border-left-color: #4CAF50;
-        }
-        .log-entry.error {
-            border-left-color: #f44336;
-        }
-        .log-entry.info {
-            border-left-color: #2196F3;
-        }
-        .loading-spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Privacy Plug Demo</h1>
-        <p>Click a button to simulate turning the privacy plug <strong>ON</strong> or <strong>OFF</strong>.</p>
-        
-        <div class="plug-status">
-            <div class="plug-indicator" id="plugIndicator"></div>
-        </div>
-
-        <div class="button-container">
-            <button id="onButton">
-                <span class="loading-spinner" id="onSpinner"></span>
-                <span>Turn On</span>
-            </button>
-            <button id="offButton">
-                <span class="loading-spinner" id="offSpinner"></span>
-                <span>Turn Off</span>
-            </button>
-        </div>
-        
-        <div id="status">Status: Ready</div>
-
-        <div class="log-container" id="logContainer">
-            <div class="log-entry info">System initialized and ready...</div>
-        </div>
-    </div>
-
-    <script>
-        // Set your endpoints
-        const onUrl = 'https://eo7w2t5eehpkple.m.pipedream.net';
-        const offUrl = 'https://eoivqzjmz9aithu.m.pipedream.net';
-
-        const statusEl = document.getElementById('status');
-        const logContainer = document.getElementById('logContainer');
-        const plugIndicator = document.getElementById('plugIndicator');
-        const onButton = document.getElementById('onButton');
-        const offButton = document.getElementById('offButton');
-        const onSpinner = document.getElementById('onSpinner');
-        const offSpinner = document.getElementById('offSpinner');
-
-        let isProcessing = false;
-
-        function addLogEntry(message, type = 'info') {
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type}`;
-            entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
-            logContainer.insertBefore(entry, logContainer.firstChild);
-        }
-
-        function updatePlugStatus(status) {
-            plugIndicator.className = 'plug-indicator ' + status;
-        }
-
-        function setLoading(loading, button, spinner) {
-            button.disabled = loading;
-            spinner.style.display = loading ? 'inline-block' : 'none';
-        }
-
-        async function triggerWebhook(url, payload) {
-            if (isProcessing) {
-                addLogEntry('Another request is in progress. Please wait...', 'error');
-                return;
-            }
-
-            isProcessing = true;
-            const isOn = payload.status === 'on';
-            const button = isOn ? onButton : offButton;
-            const spinner = isOn ? onSpinner : offSpinner;
-            
-            setLoading(true, button, spinner);
-            addLogEntry(`Initiating ${payload.status.toUpperCase()} request...`, 'info');
-            statusEl.textContent = `Processing ${payload.status.toUpperCase()} request...`;
-            
-            try {
-                addLogEntry('Sending request to server...', 'info');
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-
-                addLogEntry('Response received from server', 'info');
-                
-                let result;
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    result = await response.json();
-                } else {
-                    result = await response.text();
-                }
-
-                // Update UI to show success
-                statusEl.textContent = `Success: Privacy plug turned ${payload.status.toUpperCase()}`;
-                statusEl.style.backgroundColor = '#e8f5e9';
-                updatePlugStatus(payload.status);
-                addLogEntry(`Privacy plug successfully turned ${payload.status.toUpperCase()}`, 'success');
-
-                return result;
-            } catch (error) {
-                console.error('Error:', error);
-                statusEl.textContent = `Error: ${error.message}`;
-                statusEl.style.backgroundColor = '#ffebee';
-                addLogEntry(`Error: ${error.message}`, 'error');
-                throw error;
-            } finally {
-                setLoading(false, button, spinner);
-                isProcessing = false;
-            }
-        }
-
-        onButton.addEventListener('click', () => triggerWebhook(onUrl, { status: 'on' }));
+onButton.addEventListener('click', () => triggerWebhook(onUrl, { status: 'on' }));
         offButton.addEventListener('click', () => triggerWebhook(offUrl, { status: 'off' }));
 
-        // Initialize the UI
-        updatePlugStatus('off');
-        addLogEntry('System ready for operation', 'info');
+        // Simulate initial data flow
+        function initializeDemo() {
+            updatePlugStatus('off');
+            addLogEntry('Privacy protection system initialized', 'info');
+            addLogEntry('Data flow simulation started', 'info');
+            startDataFlow();
+
+            // Add hover effects for features
+            const features = document.querySelectorAll('.privacy-feature');
+            features.forEach(feature => {
+                feature.addEventListener('mouseenter', () => {
+                    if (!isProcessing) {
+                        feature.style.transform = 'scale(1.05)';
+                        feature.style.backgroundColor = '#f0f0f0';
+                    }
+                });
+                feature.addEventListener('mouseleave', () => {
+                    feature.style.transform = 'scale(1)';
+                    feature.style.backgroundColor = 'white';
+                });
+            });
+
+            // Add device interaction simulation
+            const device = document.querySelector('.device');
+            device.addEventListener('click', () => {
+                if (!isProcessing) {
+                    simulateDeviceInteraction();
+                }
+            });
+        }
+
+        // Simulate device interactions
+        function simulateDeviceInteraction() {
+            const currentStatus = plugIndicator.classList.contains('on');
+            const interactionTypes = ['microphone', 'camera', 'location', 'network'];
+            const type = interactionTypes[Math.floor(Math.random() * interactionTypes.length)];
+            
+            addLogEntry(`Device ${type} access attempt detected`, 'info');
+            
+            if (currentStatus) {
+                addLogEntry(`${type.charAt(0).toUpperCase() + type.slice(1)} access blocked by privacy protection`, 'success');
+                showBlockedAnimation(type);
+            } else {
+                addLogEntry(`${type.charAt(0).toUpperCase() + type.slice(1)} access granted (Protection OFF)`, 'error');
+                showAccessAnimation(type);
+            }
+        }
+
+        // Visual feedback animations
+        function showBlockedAnimation(type) {
+            const overlay = document.createElement('div');
+            overlay.style.position = 'absolute';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(244, 67, 54, 0.2)';
+            overlay.style.display = 'flex';
+            overlay.style.justifyContent = 'center';
+            overlay.style.alignItems = 'center';
+            overlay.style.animation = 'fadeOut 1s forwards';
+            overlay.style.zIndex = '1000';
+
+            const icon = document.createElement('div');
+            icon.textContent = type === 'microphone' ? '🎤' : 
+                             type === 'camera' ? '📷' : 
+                             type === 'location' ? '📍' : '🌐';
+            icon.style.fontSize = '2em';
+            icon.style.animation = 'blocked 0.5s forwards';
+
+            overlay.appendChild(icon);
+            document.querySelector('.device-screen').appendChild(overlay);
+
+            setTimeout(() => {
+                overlay.remove();
+            }, 1000);
+        }
+
+        function showAccessAnimation(type) {
+            const duration = 2000;
+            const particleCount = 10;
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'data-particle';
+                    particle.style.backgroundColor = '#4CAF50';
+                    particle.style.left = `${Math.random() * 100}%`;
+                    connectionLines.appendChild(particle);
+
+                    setTimeout(() => {
+                        particle.remove();
+                    }, duration);
+                }, i * (duration / particleCount));
+            }
+        }
+
+        // Add keypress shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (!isProcessing) {
+                if (e.key === 'O' || e.key === 'o') {
+                    onButton.click();
+                } else if (e.key === 'F' || e.key === 'f') {
+                    offButton.click();
+                }
+            }
+        });
+
+        // Custom styles for animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+            @keyframes blocked {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.5); }
+                100% { transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize the demo
+        initializeDemo();
     </script>
 </body>
 </html>

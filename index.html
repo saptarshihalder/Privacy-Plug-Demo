@@ -10,19 +10,31 @@
             margin: 2em;
             max-width: 800px;
             margin: 2em auto;
+            background-color: #f0f2f5;
         }
         .container {
             text-align: center;
             padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
         }
         button {
             padding: 1em 2em;
-            margin: 0.5em;
             font-size: 1em;
             cursor: pointer;
             border: none;
             border-radius: 5px;
-            transition: background-color 0.3s;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         #onButton {
             background-color: #4CAF50;
@@ -34,12 +46,75 @@
         }
         button:hover {
             opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         #status {
             margin-top: 1em;
             padding: 1em;
             border-radius: 5px;
             background-color: #f5f5f5;
+        }
+        .plug-status {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+        .plug-indicator {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 5px solid #ccc;
+            position: relative;
+            transition: all 0.5s;
+        }
+        .plug-indicator.on {
+            border-color: #4CAF50;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+        }
+        .plug-indicator.off {
+            border-color: #f44336;
+            box-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
+        }
+        .log-container {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #ccc;
+        }
+        .log-entry.success {
+            border-left-color: #4CAF50;
+        }
+        .log-entry.error {
+            border-left-color: #f44336;
+        }
+        .log-entry.info {
+            border-left-color: #2196F3;
+        }
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -48,10 +123,26 @@
         <h1>Privacy Plug Demo</h1>
         <p>Click a button to simulate turning the privacy plug <strong>ON</strong> or <strong>OFF</strong>.</p>
         
-        <button id="onButton">Turn On</button>
-        <button id="offButton">Turn Off</button>
+        <div class="plug-status">
+            <div class="plug-indicator" id="plugIndicator"></div>
+        </div>
+
+        <div class="button-container">
+            <button id="onButton">
+                <span class="loading-spinner" id="onSpinner"></span>
+                <span>Turn On</span>
+            </button>
+            <button id="offButton">
+                <span class="loading-spinner" id="offSpinner"></span>
+                <span>Turn Off</span>
+            </button>
+        </div>
         
         <div id="status">Status: Ready</div>
+
+        <div class="log-container" id="logContainer">
+            <div class="log-entry info">System initialized and ready...</div>
+        </div>
     </div>
 
     <script>
@@ -60,12 +151,48 @@
         const offUrl = 'https://eoivqzjmz9aithu.m.pipedream.net';
 
         const statusEl = document.getElementById('status');
+        const logContainer = document.getElementById('logContainer');
+        const plugIndicator = document.getElementById('plugIndicator');
+        const onButton = document.getElementById('onButton');
+        const offButton = document.getElementById('offButton');
+        const onSpinner = document.getElementById('onSpinner');
+        const offSpinner = document.getElementById('offSpinner');
 
-        // Function to trigger a webhook endpoint with a POST request
+        let isProcessing = false;
+
+        function addLogEntry(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            logContainer.insertBefore(entry, logContainer.firstChild);
+        }
+
+        function updatePlugStatus(status) {
+            plugIndicator.className = 'plug-indicator ' + status;
+        }
+
+        function setLoading(loading, button, spinner) {
+            button.disabled = loading;
+            spinner.style.display = loading ? 'inline-block' : 'none';
+        }
+
         async function triggerWebhook(url, payload) {
-            statusEl.textContent = `Sending request...`;
+            if (isProcessing) {
+                addLogEntry('Another request is in progress. Please wait...', 'error');
+                return;
+            }
+
+            isProcessing = true;
+            const isOn = payload.status === 'on';
+            const button = isOn ? onButton : offButton;
+            const spinner = isOn ? onSpinner : offSpinner;
+            
+            setLoading(true, button, spinner);
+            addLogEntry(`Initiating ${payload.status.toUpperCase()} request...`, 'info');
+            statusEl.textContent = `Processing ${payload.status.toUpperCase()} request...`;
             
             try {
+                addLogEntry('Sending request to server...', 'info');
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
@@ -79,6 +206,8 @@
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
 
+                addLogEntry('Response received from server', 'info');
+                
                 let result;
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('application/json')) {
@@ -87,39 +216,31 @@
                     result = await response.text();
                 }
 
+                // Update UI to show success
+                statusEl.textContent = `Success: Privacy plug turned ${payload.status.toUpperCase()}`;
+                statusEl.style.backgroundColor = '#e8f5e9';
+                updatePlugStatus(payload.status);
+                addLogEntry(`Privacy plug successfully turned ${payload.status.toUpperCase()}`, 'success');
+
                 return result;
             } catch (error) {
                 console.error('Error:', error);
+                statusEl.textContent = `Error: ${error.message}`;
+                statusEl.style.backgroundColor = '#ffebee';
+                addLogEntry(`Error: ${error.message}`, 'error');
                 throw error;
+            } finally {
+                setLoading(false, button, spinner);
+                isProcessing = false;
             }
         }
 
-        // Add button event listeners
-        document.getElementById('onButton').addEventListener('click', async () => {
-            try {
-                const result = await triggerWebhook(onUrl, { status: 'on' });
-                statusEl.textContent = typeof result === 'object' ? 
-                    `Success: ${JSON.stringify(result)}` : 
-                    `Success: ${result}`;
-                statusEl.style.backgroundColor = '#e8f5e9';
-            } catch (err) {
-                statusEl.textContent = `Error: ${err.message}`;
-                statusEl.style.backgroundColor = '#ffebee';
-            }
-        });
+        onButton.addEventListener('click', () => triggerWebhook(onUrl, { status: 'on' }));
+        offButton.addEventListener('click', () => triggerWebhook(offUrl, { status: 'off' }));
 
-        document.getElementById('offButton').addEventListener('click', async () => {
-            try {
-                const result = await triggerWebhook(offUrl, { status: 'off' });
-                statusEl.textContent = typeof result === 'object' ? 
-                    `Success: ${JSON.stringify(result)}` : 
-                    `Success: ${result}`;
-                statusEl.style.backgroundColor = '#e8f5e9';
-            } catch (err) {
-                statusEl.textContent = `Error: ${err.message}`;
-                statusEl.style.backgroundColor = '#ffebee';
-            }
-        });
+        // Initialize the UI
+        updatePlugStatus('off');
+        addLogEntry('System ready for operation', 'info');
     </script>
 </body>
 </html>

@@ -405,7 +405,7 @@
     const offSpinner = document.getElementById('offSpinner');
     const privacyOverlay = document.getElementById('privacyOverlay');
     const connectionLines = document.getElementById('connectionLines');
-    // Note: The permission key for the microphone is set to "microphone" (matching the app objects)
+    // Updated featureStatuses: using "microphone" to match permission keys in the apps object.
     const featureStatuses = {
       microphone: document.getElementById('micStatus'),
       camera: document.getElementById('cameraStatus'),
@@ -415,6 +415,8 @@
     let isProcessing = false;
     let dataFlowInterval = null;
     let activeAppIndex = 0;
+    let rotationInterval = null;
+    let isProtectionEnabled = false;
     const apps = [
       {
         name: "Video Chat",
@@ -456,10 +458,11 @@
     function updatePlugStatus(status) {
       plugIndicator.className = `plug-indicator ${status}`;
       privacyOverlay.style.opacity = status === 'on' ? '1' : '0';
-      Object.values(featureStatuses).forEach((statusElement) => {
+      Object.values(featureStatuses).forEach(statusElement => {
         statusElement.className = `feature-status ${status === 'on' ? 'enabled' : 'disabled'}`;
       });
       status === 'on' ? stopDataFlow() : startDataFlow();
+      isProtectionEnabled = status === 'on';
     }
     function createDataParticle() {
       const particle = document.createElement('div');
@@ -485,15 +488,17 @@
       spinner.style.display = loading ? 'inline-block' : 'none';
     }
     async function simulatePrivacyAction(action) {
-      // Use keys matching the app permissions ("microphone", "camera", etc.)
-      const delays = { microphone: 500, camera: 800, location: 1200, network: 1500 };
+      // Updated delays object to use "microphone" (instead of "mic")
+      const delays = {
+        microphone: 500,
+        camera: 800,
+        location: 1200,
+        network: 1500
+      };
       for (const [feature, delay] of Object.entries(delays)) {
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise(resolve => setTimeout(resolve, delay));
         featureStatuses[feature].className = `feature-status ${action === 'on' ? 'enabled' : 'disabled'}`;
-        addLogEntry(
-          `${feature.charAt(0).toUpperCase() + feature.slice(1)} protection ${action === 'on' ? 'enabled' : 'disabled'}`,
-          'info'
-        );
+        addLogEntry(`${feature.charAt(0).toUpperCase() + feature.slice(1)} protection ${action === 'on' ? 'enabled' : 'disabled'}`, 'info');
       }
     }
     function createAppElement(app) {
@@ -505,15 +510,23 @@
           <div><strong>${app.name}</strong></div>
           <div>
             ${Object.entries(app.permissions)
-              .map(
-                ([perm, details]) =>
-                  `<span class="permission-tag ${details.necessary ? 'permission-necessary' : 'permission-unnecessary'}">${perm}</span>`
-              )
+              .map(([perm, details]) => `<span class="permission-tag ${details.necessary ? 'permission-necessary' : 'permission-unnecessary'}">${perm}</span>`)
               .join('')}
           </div>
         </div>
       `;
       return div;
+    }
+    function startAppRotation() {
+      if (rotationInterval) clearInterval(rotationInterval);
+      rotateActiveApps();
+      rotationInterval = setInterval(rotateActiveApps, 10000);
+    }
+    function stopAppRotation() {
+      if (rotationInterval) {
+        clearInterval(rotationInterval);
+        rotationInterval = null;
+      }
     }
     function rotateActiveApps() {
       const appsContainer = document.getElementById('activeApps');
@@ -523,52 +536,25 @@
       appsContainer.appendChild(createAppElement(currentApp));
       appsContainer.appendChild(createAppElement(nextApp));
       activeAppIndex = (activeAppIndex + 1) % apps.length;
-      analyzePermissions(currentApp);
+      if (isProtectionEnabled) {
+        analyzePermissions(currentApp);
+      } else {
+        showAllPermissionsEnabled(currentApp);
+      }
     }
-    async function analyzePermissions(app, forceEnable = false) {
+    async function analyzePermissions(app) {
       const analysisList = document.getElementById('permissionsList');
       const analysisStatus = document.getElementById('analysisStatus');
       const progressBar = document.getElementById('analysisProgress');
-      if (forceEnable) {
-        analysisStatus.textContent = 'Protection Disabled - All Permissions Enabled';
-        analysisStatus.className = 'analysis-status status-complete';
-        analysisList.innerHTML = '';
-        progressBar.style.width = '100%';
-        const permissions = Object.entries(app.permissions);
-        for (const [perm, details] of permissions) {
-          const permRow = document.createElement('div');
-          permRow.className = 'permission-row';
-          permRow.innerHTML = `<div class="permission-info">
-            <span class="permission-icon">${
-              perm === 'camera'
-                ? '📷'
-                : perm === 'microphone'
-                ? '🎤'
-                : perm === 'location'
-                ? '📍'
-                : '🌐'
-            }</span>
-            <div class="permission-details">
-              <div><strong>${perm}</strong></div>
-              <div style="color:#2e7d32">Enabled - Protection Disabled</div>
-            </div>
-          </div>
-          <div class="permission-action">Allowed</div>`;
-          analysisList.appendChild(permRow);
-          if (featureStatuses[perm]) {
-            featureStatuses[perm].className = 'feature-status enabled';
-          }
-        }
-        return;
-      }
       analysisStatus.textContent = 'Analyzing...';
       analysisStatus.className = 'analysis-status status-analyzing';
       analysisList.innerHTML = '';
       const permissions = Object.entries(app.permissions);
       for (let i = 0; i < permissions.length; i++) {
+        if (!isProtectionEnabled) return;
         const [perm, details] = permissions[i];
         progressBar.style.width = `${((i + 1) / permissions.length) * 100}%`;
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 800));
         const permRow = document.createElement('div');
         permRow.className = 'permission-row';
         permRow.innerHTML = `<div class="permission-info">
@@ -591,13 +577,46 @@
         if (featureStatuses[perm]) {
           featureStatuses[perm].className = `feature-status ${details.necessary ? 'enabled' : 'disabled'}`;
         }
-        addLogEntry(
-          `Analyzed ${perm}: ${details.necessary ? 'Required' : 'Not required'} - ${details.reason}`,
-          details.necessary ? 'info' : 'warning'
-        );
+        addLogEntry(`Analyzed ${perm}: ${details.necessary ? 'Required' : 'Not required'} - ${details.reason}`, details.necessary ? 'info' : 'warning');
       }
-      analysisStatus.textContent = 'Analysis Complete';
+      if (isProtectionEnabled) {
+        analysisStatus.textContent = 'Analysis Complete';
+        analysisStatus.className = 'analysis-status status-complete';
+      }
+    }
+    function showAllPermissionsEnabled(app) {
+      const analysisList = document.getElementById('permissionsList');
+      const analysisStatus = document.getElementById('analysisStatus');
+      const progressBar = document.getElementById('analysisProgress');
+      analysisStatus.textContent = 'Protection Disabled - All Permissions Enabled';
       analysisStatus.className = 'analysis-status status-complete';
+      analysisList.innerHTML = '';
+      progressBar.style.width = '100%';
+      const permissions = Object.entries(app.permissions);
+      for (const [perm, details] of permissions) {
+        const permRow = document.createElement('div');
+        permRow.className = 'permission-row';
+        permRow.innerHTML = `<div class="permission-info">
+          <span class="permission-icon">${
+            perm === 'camera'
+              ? '📷'
+              : perm === 'microphone'
+              ? '🎤'
+              : perm === 'location'
+              ? '📍'
+              : '🌐'
+          }</span>
+          <div class="permission-details">
+            <div><strong>${perm}</strong></div>
+            <div style="color:#2e7d32">Enabled - Protection Disabled</div>
+          </div>
+        </div>
+        <div class="permission-action">Allowed</div>`;
+        analysisList.appendChild(permRow);
+        if (featureStatuses[perm]) {
+          featureStatuses[perm].className = 'feature-status enabled';
+        }
+      }
     }
     async function triggerWebhook(url, payload) {
       if (isProcessing) {
@@ -618,11 +637,15 @@
           body: JSON.stringify(payload)
         });
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        await analyzePermissions(apps[activeAppIndex], !isOn);
         await simulatePrivacyAction(payload.status);
         statusEl.textContent = `Success: Privacy protection turned ${payload.status.toUpperCase()}`;
         statusEl.style.backgroundColor = '#e8f5e9';
         updatePlugStatus(payload.status);
+        if (isOn) {
+          startAppRotation();
+        } else {
+          showAllPermissionsEnabled(apps[activeAppIndex]);
+        }
         addLogEntry(`Privacy protection successfully turned ${payload.status.toUpperCase()}`, 'success');
       } catch (error) {
         console.error('Error:', error);
@@ -639,8 +662,7 @@
       addLogEntry('Smart privacy protection system initialized', 'info');
       startDataFlow();
       rotateActiveApps();
-      setInterval(rotateActiveApps, 10000);
-      document.querySelectorAll('.privacy-feature').forEach((feature) => {
+      document.querySelectorAll('.privacy-feature').forEach(feature => {
         feature.addEventListener('mouseenter', () => {
           if (!isProcessing) {
             feature.style.transform = 'scale(1.05)';

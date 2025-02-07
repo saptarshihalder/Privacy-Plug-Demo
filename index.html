@@ -1,660 +1,683 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Privacy Plug Demo</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 2em auto;
-            max-width: 1000px;
-            background-color: #f0f2f5;
-        }
-        .container {
-            text-align: center;
-            padding: 20px;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .dashboard {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin: 20px 0;
-        }
-        @media (max-width: 768px) {
-            .dashboard {
-                grid-template-columns: 1fr;
-            }
-        }
-        .control-panel, .device-simulation {
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 10px;
-        }
-        .button-container {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin: 20px 0;
-        }
-        button {
-            padding: 1em 2em;
-            font-size: 1em;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        #onButton {
-            background-color: #4CAF50;
-            color: white;
-        }
-        #offButton {
-            background-color: #f44336;
-            color: white;
-        }
-        button:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .status {
-            margin-top: 1em;
-            padding: 1em;
-            border-radius: 5px;
-            background-color: #f5f5f5;
-        }
-        .plug-status {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 20px 0;
-        }
-        .plug-indicator {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: 5px solid #ccc;
-            position: relative;
-            transition: all 0.5s;
-        }
-        .plug-indicator.on {
-            border-color: #4CAF50;
-            box-shadow: 0 0 20px rgba(76,175,80,0.5);
-        }
-        .plug-indicator.off {
-            border-color: #f44336;
-            box-shadow: 0 0 20px rgba(244,67,54,0.5);
-        }
-        .device {
-            width: 200px;
-            height: 300px;
-            margin: 0 auto;
-            background-color: #e0e0e0;
-            border-radius: 20px;
-            position: relative;
-            padding: 20px;
-            transition: all 0.5s;
-        }
-        .device-screen {
-            width: 180px;
-            height: 240px;
-            background-color: #333;
-            margin: 10px auto;
-            border-radius: 10px;
-            position: relative;
-            overflow: hidden;
-        }
-        .privacy-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            opacity: 0;
-            transition: opacity 0.5s;
-        }
-        .privacy-feature {
-            margin: 10px;
-            padding: 10px;
-            background-color: white;
-            border-radius: 5px;
-            transition: all 0.3s;
-        }
-        .feature-status {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 10px;
-        }
-        .feature-status.enabled {
-            background-color: #4CAF50;
-        }
-        .feature-status.disabled {
-            background-color: #f44336;
-        }
-        .log-container {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-            max-height: 200px;
-            overflow-y: auto;
-            text-align: left;
-        }
-        .log-entry {
-            margin: 5px 0;
-            padding: 5px;
-            border-left: 3px solid #ccc;
-            font-size: 0.9em;
-        }
-        .log-entry.success {
-            border-left-color: #4CAF50;
-        }
-        .log-entry.error {
-            border-left-color: #f44336;
-        }
-        .log-entry.info {
-            border-left-color: #2196F3;
-        }
-        .loading-spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .connection-lines {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-        .data-particle {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background-color: #2196F3;
-            border-radius: 50%;
-            pointer-events: none;
-            animation: moveParticle 2s linear infinite;
-        }
-        @keyframes moveParticle {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(100px); opacity: 0; }
-        }
-        .app-simulation {
-            display: flex;
-            gap: 10px;
-            margin: 10px 0;
-            padding: 10px;
-            background-color: white;
-            border-radius: 5px;
-            align-items: center;
-            transition: all 0.3s;
-        }
-        .app-icon {
-            width: 40px;
-            height: 40px;
-            background-color: #e0e0e0;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-        .app-details {
-            flex-grow: 1;
-            text-align: left;
-        }
-        .permission-tag {
-            display: inline-block;
-            padding: 2px 8px;
-            margin: 2px;
-            border-radius: 12px;
-            font-size: 0.8em;
-        }
-        .permission-necessary {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-        }
-        .permission-unnecessary {
-            background-color: #ffebee;
-            color: #c62828;
-        }
-        .analysis-panel {
-            background-color: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .analysis-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .analysis-status {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-        .status-analyzing {
-            background-color: #fff3e0;
-            color: #e65100;
-        }
-        .status-complete {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-        }
-        .permission-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-        }
-        .permission-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .permission-icon {
-            font-size: 1.2em;
-        }
-        .permission-details {
-            font-size: 0.9em;
-        }
-        .permission-action {
-            font-size: 0.8em;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background-color: #f5f5f5;
-        }
-        .analysis-progress {
-            width: 100%;
-            height: 4px;
-            background-color: #f5f5f5;
-            border-radius: 2px;
-            margin: 10px 0;
-            overflow: hidden;
-        }
-        .progress-bar {
-            height: 100%;
-            background-color: #2196F3;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Privacy Plug Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em auto;
+      max-width: 1000px;
+      background-color: #f0f2f5;
+    }
+    .container {
+      text-align: center;
+      padding: 20px;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 20px 0;
+    }
+    @media (max-width: 768px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+    }
+    .control-panel,
+    .device-simulation {
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 10px;
+    }
+    .button-container {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin: 20px 0;
+    }
+    button {
+      padding: 1em 2em;
+      font-size: 1em;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #onButton {
+      background-color: #4caf50;
+      color: white;
+    }
+    #offButton {
+      background-color: #f44336;
+      color: white;
+    }
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 1em;
+      padding: 1em;
+      border-radius: 5px;
+      background-color: #f5f5f5;
+    }
+    .plug-status {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 20px 0;
+    }
+    .plug-indicator {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 5px solid #ccc;
+      position: relative;
+      transition: all 0.5s;
+    }
+    .plug-indicator.on {
+      border-color: #4caf50;
+      box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+    }
+    .plug-indicator.off {
+      border-color: #f44336;
+      box-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
+    }
+    .device {
+      width: 200px;
+      height: 300px;
+      margin: 0 auto;
+      background-color: #e0e0e0;
+      border-radius: 20px;
+      position: relative;
+      padding: 20px;
+      transition: all 0.5s;
+    }
+    .device-screen {
+      width: 180px;
+      height: 240px;
+      background-color: #333;
+      margin: 10px auto;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .privacy-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    .privacy-feature {
+      margin: 10px;
+      padding: 10px;
+      background-color: white;
+      border-radius: 5px;
+      transition: all 0.3s;
+    }
+    .feature-status {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+    .feature-status.enabled {
+      background-color: #4caf50;
+    }
+    .feature-status.disabled {
+      background-color: #f44336;
+    }
+    .log-container {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 5px;
+      max-height: 200px;
+      overflow-y: auto;
+      text-align: left;
+    }
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-left: 3px solid #ccc;
+      font-size: 0.9em;
+    }
+    .log-entry.success {
+      border-left-color: #4caf50;
+    }
+    .log-entry.error {
+      border-left-color: #f44336;
+    }
+    .log-entry.info {
+      border-left-color: #2196f3;
+    }
+    .loading-spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+    .connection-lines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .data-particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background-color: #2196f3;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: moveParticle 2s linear infinite;
+    }
+    @keyframes moveParticle {
+      0% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100px);
+        opacity: 0;
+      }
+    }
+    .app-simulation {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0;
+      padding: 10px;
+      background-color: white;
+      border-radius: 5px;
+      align-items: center;
+      transition: all 0.3s;
+    }
+    .app-icon {
+      width: 40px;
+      height: 40px;
+      background-color: #e0e0e0;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    .app-details {
+      flex-grow: 1;
+      text-align: left;
+    }
+    .permission-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      margin: 2px;
+      border-radius: 12px;
+      font-size: 0.8em;
+    }
+    .permission-necessary {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+    .permission-unnecessary {
+      background-color: #ffebee;
+      color: #c62828;
+    }
+    .analysis-panel {
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .analysis-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .analysis-status {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    .status-analyzing {
+      background-color: #fff3e0;
+      color: #e65100;
+    }
+    .status-complete {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+    .permission-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    .permission-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .permission-icon {
+      font-size: 1.2em;
+    }
+    .permission-details {
+      font-size: 0.9em;
+    }
+    .permission-action {
+      font-size: 0.8em;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background-color: #f5f5f5;
+    }
+    .analysis-progress {
+      width: 100%;
+      height: 4px;
+      background-color: #f5f5f5;
+      border-radius: 2px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background-color: #2196f3;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Smart Privacy Plug Demo</h1>
-        <p>Intelligent privacy protection with real-time permission analysis</p>
-        <div class="dashboard">
-            <div class="control-panel">
-                <h2>Control Panel</h2>
-                <div class="plug-status">
-                    <div class="plug-indicator" id="plugIndicator"></div>
-                </div>
-                <div class="button-container">
-                    <button id="onButton">
-                        <span class="loading-spinner" id="onSpinner"></span>
-                        <span>Enable Protection</span>
-                    </button>
-                    <button id="offButton">
-                        <span class="loading-spinner" id="offSpinner"></span>
-                        <span>Disable Protection</span>
-                    </button>
-                </div>
-                <div class="privacy-features">
-                    <h3>Active Protections</h3>
-                    <div id="featuresList">
-                        <div class="privacy-feature">
-                            <span class="feature-status disabled" id="micStatus"></span>
-                            <span class="feature-icon">🎤</span> Microphone
-                        </div>
-                        <div class="privacy-feature">
-                            <span class="feature-status disabled" id="cameraStatus"></span>
-                            <span class="feature-icon">📷</span> Camera
-                        </div>
-                        <div class="privacy-feature">
-                            <span class="feature-status disabled" id="locationStatus"></span>
-                            <span class="feature-icon">📍</span> Location
-                        </div>
-                        <div class="privacy-feature">
-                            <span class="feature-status disabled" id="networkStatus"></span>
-                            <span class="feature-icon">🌐</span> Network
-                        </div>
-                    </div>
-                </div>
-                <div class="analysis-panel">
-                    <div class="analysis-header">
-                        <h3>Permission Analysis</h3>
-                        <span class="analysis-status" id="analysisStatus">Ready</span>
-                    </div>
-                    <div class="analysis-progress">
-                        <div class="progress-bar" id="analysisProgress"></div>
-                    </div>
-                    <div id="permissionsList"></div>
-                </div>
-            </div>
-            <div class="device-simulation">
-                <h2>Active Applications</h2>
-                <div id="activeApps"></div>
-                <div class="device">
-                    <div class="device-screen">
-                        <div class="privacy-overlay" id="privacyOverlay">
-                            <div id="privacyStatus">Privacy Protection Active</div>
-                        </div>
-                        <div class="connection-lines" id="connectionLines"></div>
-                    </div>
-                </div>
-            </div>
+  <div class="container">
+    <h1>Smart Privacy Plug Demo</h1>
+    <p>Intelligent privacy protection with real-time permission analysis</p>
+    <div class="dashboard">
+      <div class="control-panel">
+        <h2>Control Panel</h2>
+        <div class="plug-status">
+          <div class="plug-indicator off" id="plugIndicator"></div>
         </div>
-        <div class="status" id="status">Status: Ready</div>
-        <div class="log-container" id="logContainer">
-            <div class="log-entry info">System initialized and ready...</div>
+        <div class="button-container">
+          <button id="onButton">
+            <span class="loading-spinner" id="onSpinner"></span>
+            <span>Enable Protection</span>
+          </button>
+          <button id="offButton">
+            <span class="loading-spinner" id="offSpinner"></span>
+            <span>Disable Protection</span>
+          </button>
         </div>
+        <div class="privacy-features">
+          <h3>Active Protections</h3>
+          <div id="featuresList">
+            <div class="privacy-feature">
+              <span class="feature-status disabled" id="micStatus"></span>
+              <span class="feature-icon">🎤</span> Microphone
+            </div>
+            <div class="privacy-feature">
+              <span class="feature-status disabled" id="cameraStatus"></span>
+              <span class="feature-icon">📷</span> Camera
+            </div>
+            <div class="privacy-feature">
+              <span class="feature-status disabled" id="locationStatus"></span>
+              <span class="feature-icon">📍</span> Location
+            </div>
+            <div class="privacy-feature">
+              <span class="feature-status disabled" id="networkStatus"></span>
+              <span class="feature-icon">🌐</span> Network
+            </div>
+          </div>
+        </div>
+        <div class="analysis-panel">
+          <div class="analysis-header">
+            <h3>Permission Analysis</h3>
+            <span class="analysis-status" id="analysisStatus">Ready</span>
+          </div>
+          <div class="analysis-progress">
+            <div class="progress-bar" id="analysisProgress"></div>
+          </div>
+          <div id="permissionsList"></div>
+        </div>
+      </div>
+      <div class="device-simulation">
+        <h2>Active Applications</h2>
+        <div id="activeApps"></div>
+        <div class="device">
+          <div class="device-screen">
+            <div class="privacy-overlay" id="privacyOverlay">
+              <div id="privacyStatus">Privacy Protection Active</div>
+            </div>
+            <div class="connection-lines" id="connectionLines"></div>
+          </div>
+        </div>
+      </div>
     </div>
-    <script>
-        const onUrl = 'https://eo7w2t5eehpkple.m.pipedream.net';
-        const offUrl = 'https://eoivqzjmz9aithu.m.pipedream.net';
-        const statusEl = document.getElementById('status');
-        const logContainer = document.getElementById('logContainer');
-        const plugIndicator = document.getElementById('plugIndicator');
-        const onButton = document.getElementById('onButton');
-        const offButton = document.getElementById('offButton');
-        const onSpinner = document.getElementById('onSpinner');
-        const offSpinner = document.getElementById('offSpinner');
-        const privacyOverlay = document.getElementById('privacyOverlay');
-        const connectionLines = document.getElementById('connectionLines');
-        const featureStatuses = {
-            mic: document.getElementById('micStatus'),
-            camera: document.getElementById('cameraStatus'),
-            location: document.getElementById('locationStatus'),
-            network: document.getElementById('networkStatus')
-        };
-        let isProcessing = false;
-        let dataFlowInterval = null;
-        let activeAppIndex = 0;
-        const apps = [
-            {
-                name: "Video Chat",
-                icon: "🎥",
-                permissions: {
-                    camera: { necessary: true, reason: "Required for video calls" },
-                    microphone: { necessary: true, reason: "Required for voice calls" },
-                    location: { necessary: false, reason: "Not needed for core functionality" },
-                    network: { necessary: true, reason: "Required for connection" }
-                }
-            },
-            {
-                name: "Weather App",
-                icon: "🌤️",
-                permissions: {
-                    camera: { necessary: false, reason: "Not needed for weather updates" },
-                    microphone: { necessary: false, reason: "Not required" },
-                    location: { necessary: true, reason: "Required for local weather" },
-                    network: { necessary: true, reason: "Required for updates" }
-                }
-            },
-            {
-                name: "Notes App",
-                icon: "📝",
-                permissions: {
-                    camera: { necessary: false, reason: "Optional for attachments" },
-                    microphone: { necessary: false, reason: "Optional for voice notes" },
-                    location: { necessary: false, reason: "Not required" },
-                    network: { necessary: false, reason: "Can work offline" }
-                }
-            }
-        ];
-        function addLogEntry(message, type = 'info') {
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type}`;
-            entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
-            logContainer.insertBefore(entry, logContainer.firstChild);
+    <div class="status" id="status">Status: Ready</div>
+    <div class="log-container" id="logContainer">
+      <div class="log-entry info">System initialized and ready...</div>
+    </div>
+  </div>
+  <script>
+    const onUrl = 'https://eo7w2t5eehpkple.m.pipedream.net';
+    const offUrl = 'https://eoivqzjmz9aithu.m.pipedream.net';
+    const statusEl = document.getElementById('status');
+    const logContainer = document.getElementById('logContainer');
+    const plugIndicator = document.getElementById('plugIndicator');
+    const onButton = document.getElementById('onButton');
+    const offButton = document.getElementById('offButton');
+    const onSpinner = document.getElementById('onSpinner');
+    const offSpinner = document.getElementById('offSpinner');
+    const privacyOverlay = document.getElementById('privacyOverlay');
+    const connectionLines = document.getElementById('connectionLines');
+    // Note: The permission key for the microphone is set to "microphone" (matching the app objects)
+    const featureStatuses = {
+      microphone: document.getElementById('micStatus'),
+      camera: document.getElementById('cameraStatus'),
+      location: document.getElementById('locationStatus'),
+      network: document.getElementById('networkStatus')
+    };
+    let isProcessing = false;
+    let dataFlowInterval = null;
+    let activeAppIndex = 0;
+    const apps = [
+      {
+        name: "Video Chat",
+        icon: "🎥",
+        permissions: {
+          camera: { necessary: true, reason: "Required for video calls" },
+          microphone: { necessary: true, reason: "Required for voice calls" },
+          location: { necessary: false, reason: "Not needed for core functionality" },
+          network: { necessary: true, reason: "Required for connection" }
         }
-        function updatePlugStatus(status) {
-            plugIndicator.className = `plug-indicator ${status}`;
-            privacyOverlay.style.opacity = status === 'on' ? '1' : '0';
-            Object.values(featureStatuses).forEach(statusElement => {
-                statusElement.className = `feature-status ${status === 'on' ? 'enabled' : 'disabled'}`;
-            });
-            status === 'on' ? stopDataFlow() : startDataFlow();
+      },
+      {
+        name: "Weather App",
+        icon: "🌤️",
+        permissions: {
+          camera: { necessary: false, reason: "Not needed for weather updates" },
+          microphone: { necessary: false, reason: "Not required" },
+          location: { necessary: true, reason: "Required for local weather" },
+          network: { necessary: true, reason: "Required for updates" }
         }
-        function createDataParticle() {
-            const particle = document.createElement('div');
-            particle.className = 'data-particle';
-            particle.style.left = `${Math.random() * 100}%`;
-            connectionLines.appendChild(particle);
-            setTimeout(() => connectionLines.removeChild(particle), 2000);
+      },
+      {
+        name: "Notes App",
+        icon: "📝",
+        permissions: {
+          camera: { necessary: false, reason: "Optional for attachments" },
+          microphone: { necessary: false, reason: "Optional for voice notes" },
+          location: { necessary: false, reason: "Not required" },
+          network: { necessary: false, reason: "Can work offline" }
         }
-        function startDataFlow() {
-            if (!dataFlowInterval) {
-                dataFlowInterval = setInterval(createDataParticle, 200);
-            }
+      }
+    ];
+    function addLogEntry(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+      logContainer.insertBefore(entry, logContainer.firstChild);
+    }
+    function updatePlugStatus(status) {
+      plugIndicator.className = `plug-indicator ${status}`;
+      privacyOverlay.style.opacity = status === 'on' ? '1' : '0';
+      Object.values(featureStatuses).forEach((statusElement) => {
+        statusElement.className = `feature-status ${status === 'on' ? 'enabled' : 'disabled'}`;
+      });
+      status === 'on' ? stopDataFlow() : startDataFlow();
+    }
+    function createDataParticle() {
+      const particle = document.createElement('div');
+      particle.className = 'data-particle';
+      particle.style.left = `${Math.random() * 100}%`;
+      connectionLines.appendChild(particle);
+      setTimeout(() => connectionLines.removeChild(particle), 2000);
+    }
+    function startDataFlow() {
+      if (!dataFlowInterval) {
+        dataFlowInterval = setInterval(createDataParticle, 200);
+      }
+    }
+    function stopDataFlow() {
+      if (dataFlowInterval) {
+        clearInterval(dataFlowInterval);
+        dataFlowInterval = null;
+        connectionLines.innerHTML = '';
+      }
+    }
+    function setLoading(loading, button, spinner) {
+      button.disabled = loading;
+      spinner.style.display = loading ? 'inline-block' : 'none';
+    }
+    async function simulatePrivacyAction(action) {
+      // Use keys matching the app permissions ("microphone", "camera", etc.)
+      const delays = { microphone: 500, camera: 800, location: 1200, network: 1500 };
+      for (const [feature, delay] of Object.entries(delays)) {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        featureStatuses[feature].className = `feature-status ${action === 'on' ? 'enabled' : 'disabled'}`;
+        addLogEntry(
+          `${feature.charAt(0).toUpperCase() + feature.slice(1)} protection ${action === 'on' ? 'enabled' : 'disabled'}`,
+          'info'
+        );
+      }
+    }
+    function createAppElement(app) {
+      const div = document.createElement('div');
+      div.className = 'app-simulation';
+      div.innerHTML = `
+        <div class="app-icon">${app.icon}</div>
+        <div class="app-details">
+          <div><strong>${app.name}</strong></div>
+          <div>
+            ${Object.entries(app.permissions)
+              .map(
+                ([perm, details]) =>
+                  `<span class="permission-tag ${details.necessary ? 'permission-necessary' : 'permission-unnecessary'}">${perm}</span>`
+              )
+              .join('')}
+          </div>
+        </div>
+      `;
+      return div;
+    }
+    function rotateActiveApps() {
+      const appsContainer = document.getElementById('activeApps');
+      appsContainer.innerHTML = '';
+      const currentApp = apps[activeAppIndex];
+      const nextApp = apps[(activeAppIndex + 1) % apps.length];
+      appsContainer.appendChild(createAppElement(currentApp));
+      appsContainer.appendChild(createAppElement(nextApp));
+      activeAppIndex = (activeAppIndex + 1) % apps.length;
+      analyzePermissions(currentApp);
+    }
+    async function analyzePermissions(app, forceEnable = false) {
+      const analysisList = document.getElementById('permissionsList');
+      const analysisStatus = document.getElementById('analysisStatus');
+      const progressBar = document.getElementById('analysisProgress');
+      if (forceEnable) {
+        analysisStatus.textContent = 'Protection Disabled - All Permissions Enabled';
+        analysisStatus.className = 'analysis-status status-complete';
+        analysisList.innerHTML = '';
+        progressBar.style.width = '100%';
+        const permissions = Object.entries(app.permissions);
+        for (const [perm, details] of permissions) {
+          const permRow = document.createElement('div');
+          permRow.className = 'permission-row';
+          permRow.innerHTML = `<div class="permission-info">
+            <span class="permission-icon">${
+              perm === 'camera'
+                ? '📷'
+                : perm === 'microphone'
+                ? '🎤'
+                : perm === 'location'
+                ? '📍'
+                : '🌐'
+            }</span>
+            <div class="permission-details">
+              <div><strong>${perm}</strong></div>
+              <div style="color:#2e7d32">Enabled - Protection Disabled</div>
+            </div>
+          </div>
+          <div class="permission-action">Allowed</div>`;
+          analysisList.appendChild(permRow);
+          if (featureStatuses[perm]) {
+            featureStatuses[perm].className = 'feature-status enabled';
+          }
         }
-        function stopDataFlow() {
-            if (dataFlowInterval) {
-                clearInterval(dataFlowInterval);
-                dataFlowInterval = null;
-                connectionLines.innerHTML = '';
-            }
+        return;
+      }
+      analysisStatus.textContent = 'Analyzing...';
+      analysisStatus.className = 'analysis-status status-analyzing';
+      analysisList.innerHTML = '';
+      const permissions = Object.entries(app.permissions);
+      for (let i = 0; i < permissions.length; i++) {
+        const [perm, details] = permissions[i];
+        progressBar.style.width = `${((i + 1) / permissions.length) * 100}%`;
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        const permRow = document.createElement('div');
+        permRow.className = 'permission-row';
+        permRow.innerHTML = `<div class="permission-info">
+          <span class="permission-icon">${
+            perm === 'camera'
+              ? '📷'
+              : perm === 'microphone'
+              ? '🎤'
+              : perm === 'location'
+              ? '📍'
+              : '🌐'
+          }</span>
+          <div class="permission-details">
+            <div><strong>${perm}</strong></div>
+            <div style="color:${details.necessary ? '#2e7d32' : '#c62828'}">${details.reason}</div>
+          </div>
+        </div>
+        <div class="permission-action">${details.necessary ? 'Allowed' : 'Blocked'}</div>`;
+        analysisList.appendChild(permRow);
+        if (featureStatuses[perm]) {
+          featureStatuses[perm].className = `feature-status ${details.necessary ? 'enabled' : 'disabled'}`;
         }
-        function setLoading(loading, button, spinner) {
-            button.disabled = loading;
-            spinner.style.display = loading ? 'inline-block' : 'none';
-        }
-        async function simulatePrivacyAction(action) {
-            const delays = { mic: 500, camera: 800, location: 1200, network: 1500 };
-            for (const [feature, delay] of Object.entries(delays)) {
-                await new Promise(resolve => setTimeout(resolve, delay));
-                featureStatuses[feature].className = `feature-status ${action === 'on' ? 'enabled' : 'disabled'}`;
-                addLogEntry(`${feature.charAt(0).toUpperCase() + feature.slice(1)} protection ${action === 'on' ? 'enabled' : 'disabled'}`, 'info');
-            }
-        }
-        function createAppElement(app) {
-            const div = document.createElement('div');
-            div.className = 'app-simulation';
-            div.innerHTML = `
-                <div class="app-icon">${app.icon}</div>
-                <div class="app-details">
-                    <div><strong>${app.name}</strong></div>
-                    <div>
-                        ${Object.entries(app.permissions).map(([perm, details]) => `
-                            <span class="permission-tag ${details.necessary ? 'permission-necessary' : 'permission-unnecessary'}">
-                                ${perm}
-                            </span>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            return div;
-        }
-        function rotateActiveApps() {
-            const appsContainer = document.getElementById('activeApps');
-            appsContainer.innerHTML = '';
-            const currentApp = apps[activeAppIndex];
-            const nextApp = apps[(activeAppIndex + 1) % apps.length];
-            appsContainer.appendChild(createAppElement(currentApp));
-            appsContainer.appendChild(createAppElement(nextApp));
-            activeAppIndex = (activeAppIndex + 1) % apps.length;
-            analyzePermissions(currentApp);
-        }
-        async function analyzePermissions(app, forceEnable = false) {
-            const analysisList = document.getElementById('permissionsList');
-            const analysisStatus = document.getElementById('analysisStatus');
-            const progressBar = document.getElementById('analysisProgress');
-            if (forceEnable) {
-                analysisStatus.textContent = 'Protection Disabled - All Permissions Enabled';
-                analysisStatus.className = 'analysis-status status-complete';
-                analysisList.innerHTML = '';
-                progressBar.style.width = '100%';
-                const permissions = Object.entries(app.permissions);
-                for (const [perm, details] of permissions) {
-                    const permRow = document.createElement('div');
-                    permRow.className = 'permission-row';
-                    permRow.innerHTML = `
-                        <div class="permission-info">
-                            <span class="permission-icon">
-                                ${perm === 'camera' ? '📷' : perm === 'microphone' ? '🎤' : perm === 'location' ? '📍' : '🌐'}
-                            </span>
-                            <div class="permission-details">
-                                <div><strong>${perm}</strong></div>
-                                <div style="color: #2e7d32">Enabled - Protection Disabled</div>
-                            </div>
-                        </div>
-                        <div class="permission-action">Allowed</div>
-                    `;
-                    analysisList.appendChild(permRow);
-                    if (featureStatuses[perm]) {
-                        featureStatuses[perm].className = 'feature-status enabled';
-                    }
-                }
-                return;
-            }
-            analysisStatus.textContent = 'Analyzing...';
-            analysisStatus.className = 'analysis-status status-analyzing';
-            analysisList.innerHTML = '';
-            const permissions = Object.entries(app.permissions);
-            for (let i = 0; i < permissions.length; i++) {
-                const [perm, details] = permissions[i];
-                progressBar.style.width = `${((i + 1) / permissions.length) * 100}%`;
-                await new Promise(resolve => setTimeout(resolve, 800));
-                const permRow = document.createElement('div');
-                permRow.className = 'permission-row';
-                permRow.innerHTML = `
-                    <div class="permission-info">
-                        <span class="permission-icon">
-                            ${perm === 'camera' ? '📷' : perm === 'microphone' ? '🎤' : perm === 'location' ? '📍' : '🌐'}
-                        </span>
-                        <div class="permission-details">
-                            <div><strong>${perm}</strong></div>
-                            <div style="color: ${details.necessary ? '#2e7d32' : '#c62828'}">
-                                ${details.reason}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="permission-action">
-                        ${details.necessary ? 'Allowed' : 'Blocked'}
-                    </div>
-                `;
-                analysisList.appendChild(permRow);
-                if (featureStatuses[perm]) {
-                    featureStatuses[perm].className = `feature-status ${details.necessary ? 'enabled' : 'disabled'}`;
-                }
-                addLogEntry(`Analyzed ${perm}: ${details.necessary ? 'Required' : 'Not required'} - ${details.reason}`, details.necessary ? 'info' : 'warning');
-            }
-            analysisStatus.textContent = 'Analysis Complete';
-            analysisStatus.className = 'analysis-status status-complete';
-        }
-        async function triggerWebhook(url, payload) {
-            if (isProcessing) {
-                addLogEntry('Another request is in progress. Please wait...', 'error');
-                return;
-            }
-            isProcessing = true;
-            const isOn = payload.status === 'on';
-            const button = isOn ? onButton : offButton;
-            const spinner = isOn ? onSpinner : offSpinner;
-            setLoading(true, button, spinner);
-            addLogEntry(`Initiating privacy protection ${payload.status.toUpperCase()}...`, 'info');
-            statusEl.textContent = `Processing ${payload.status.toUpperCase()} request...`;
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                await analyzePermissions(apps[activeAppIndex], !isOn);
-                await simulatePrivacyAction(payload.status);
-                statusEl.textContent = `Success: Privacy protection turned ${payload.status.toUpperCase()}`;
-                statusEl.style.backgroundColor = '#e8f5e9';
-                updatePlugStatus(payload.status);
-                addLogEntry(`Privacy protection successfully turned ${payload.status.toUpperCase()}`, 'success');
-            } catch (error) {
-                console.error('Error:', error);
-                statusEl.textContent = `Error: ${error.message}`;
-                statusEl.style.backgroundColor = '#ffebee';
-                addLogEntry(`Error: ${error.message}`, 'error');
-            } finally {
-                setLoading(false, button, spinner);
-                isProcessing = false;
-            }
-        }
-        function initializeDemo() {
-            updatePlugStatus('off');
-            addLogEntry('Smart privacy protection system initialized', 'info');
-            startDataFlow();
-            rotateActiveApps();
-            setInterval(rotateActiveApps, 10000);
-            document.querySelectorAll('.privacy-feature').forEach(feature => {
-                feature.addEventListener('mouseenter', () => {
-                    if (!isProcessing) {
-                        feature.style.transform = 'scale(1.05)';
-                        feature.style.backgroundColor = '#f0f0f0';
-                    }
-                });
-                feature.addEventListener('mouseleave', () => {
-                    feature.style.transform = 'scale(1)';
-                    feature.style.backgroundColor = 'white';
-                });
-            });
-            document.querySelector('.device').addEventListener('click', () => {
-                if (!isProcessing) simulateDeviceInteraction();
-            });
-        }
-        function simulateDeviceInteraction() {
-            const currentStatus = plugIndicator.classList.contains('on');
-            const type = ['microphone', 'camera', 'location', 'network'][Math.floor(Math.random() * 4)];
-            addLogEntry(`Device ${type} access attempt detected`, 'info');
-            if (currentStatus) {
-                addLogEntry(`${type.charAt(0).toUpperCase() + type.slice(1)} access blocked by privacy protection`, 'success');
-            } else {
-                addLogEntry(`${type.charAt(0).toUpperCase() + type.slice(1)} access granted (Protection OFF)`, 'error');
-            }
-        }
-        document.addEventListener('keydown', (e) => {
-            if (!isProcessing) {
-                if (e.key.toLowerCase() === 'o') onButton.click();
-                if (e.key.toLowerCase() === 'f') offButton.click();
-            }
+        addLogEntry(
+          `Analyzed ${perm}: ${details.necessary ? 'Required' : 'Not required'} - ${details.reason}`,
+          details.necessary ? 'info' : 'warning'
+        );
+      }
+      analysisStatus.textContent = 'Analysis Complete';
+      analysisStatus.className = 'analysis-status status-complete';
+    }
+    async function triggerWebhook(url, payload) {
+      if (isProcessing) {
+        addLogEntry('Another request is in progress. Please wait...', 'error');
+        return;
+      }
+      isProcessing = true;
+      const isOn = payload.status === 'on';
+      const button = isOn ? onButton : offButton;
+      const spinner = isOn ? onSpinner : offSpinner;
+      setLoading(true, button, spinner);
+      addLogEntry(`Initiating privacy protection ${payload.status.toUpperCase()}...`, 'info');
+      statusEl.textContent = `Processing ${payload.status.toUpperCase()} request...`;
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(payload)
         });
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-            @keyframes blocked { 0% { transform: scale(1); } 50% { transform: scale(1.5); } 100% { transform: scale(1); } }
-        `;
-        document.head.appendChild(style);
-        initializeDemo();
-    </script>
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        await analyzePermissions(apps[activeAppIndex], !isOn);
+        await simulatePrivacyAction(payload.status);
+        statusEl.textContent = `Success: Privacy protection turned ${payload.status.toUpperCase()}`;
+        statusEl.style.backgroundColor = '#e8f5e9';
+        updatePlugStatus(payload.status);
+        addLogEntry(`Privacy protection successfully turned ${payload.status.toUpperCase()}`, 'success');
+      } catch (error) {
+        console.error('Error:', error);
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.style.backgroundColor = '#ffebee';
+        addLogEntry(`Error: ${error.message}`, 'error');
+      } finally {
+        setLoading(false, button, spinner);
+        isProcessing = false;
+      }
+    }
+    function initializeDemo() {
+      updatePlugStatus('off');
+      addLogEntry('Smart privacy protection system initialized', 'info');
+      startDataFlow();
+      rotateActiveApps();
+      setInterval(rotateActiveApps, 10000);
+      document.querySelectorAll('.privacy-feature').forEach((feature) => {
+        feature.addEventListener('mouseenter', () => {
+          if (!isProcessing) {
+            feature.style.transform = 'scale(1.05)';
+            feature.style.backgroundColor = '#f0f0f0';
+          }
+        });
+        feature.addEventListener('mouseleave', () => {
+          feature.style.transform = 'scale(1)';
+          feature.style.backgroundColor = 'white';
+        });
+      });
+      document.querySelector('.device').addEventListener('click', () => {
+        if (!isProcessing) simulateDeviceInteraction();
+      });
+    }
+    function simulateDeviceInteraction() {
+      const currentStatus = plugIndicator.classList.contains('on');
+      const type = ['microphone', 'camera', 'location', 'network'][Math.floor(Math.random() * 4)];
+      addLogEntry(`Device ${type} access attempt detected`, 'info');
+      if (currentStatus) {
+        addLogEntry(`${type.charAt(0).toUpperCase() + type.slice(1)} access blocked by privacy protection`, 'success');
+      } else {
+        addLogEntry(`${type.charAt(0).toUpperCase() + type.slice(1)} access granted (Protection OFF)`, 'error');
+      }
+    }
+    document.addEventListener('keydown', (e) => {
+      if (!isProcessing) {
+        if (e.key.toLowerCase() === 'o') onButton.click();
+        if (e.key.toLowerCase() === 'f') offButton.click();
+      }
+    });
+    const style = document.createElement('style');
+    style.textContent = `@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } } @keyframes blocked { 0% { transform: scale(1); } 50% { transform: scale(1.5); } 100% { transform: scale(1); } }`;
+    document.head.appendChild(style);
+    onButton.addEventListener('click', () => triggerWebhook(onUrl, { status: 'on' }));
+    offButton.addEventListener('click', () => triggerWebhook(offUrl, { status: 'off' }));
+    initializeDemo();
+  </script>
 </body>
 </html>
